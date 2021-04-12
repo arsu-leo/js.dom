@@ -1,570 +1,624 @@
-var dom = new (function Dom(elements)
-{
-  this.from = function(e)
-  {
-    var list = e instanceof NodeList
-             ? Array.prototype.slice.call(e)
-             : e instanceof Array
-               ? e
-               : [e];
+'use strict';
+(function (window) {
 
-    list = list.filter(function(item)
-    {
-      return item == window.document || item instanceof Element;
-    });
+  //Dom, methods use fluent interface,
+  // means that if no return is expected,
+  // it returns "this" to allow chaining calls
+  // Functions that are expected to return elemtens data,
+  // usually return the first element data
+  // Methods used to set data, usually sets it on all the elements
+  var documentDom = new (function Dom(elements) {
+    //#region Selection
+    this.from = function (e) {
+      var list = e instanceof window.NodeList
+        ? Array.prototype.slice.call(e)
+        : e instanceof Array
+          ? e
+          : [e];
 
-    return new Dom(list);
-  };
+      list = list.filter(function (item) {
+        return item == window.document || item instanceof window.Element;
+      });
 
-  this.getCss = function(property)
-  {
-    for(var i in elements)
-      return window
-        .getComputedStyle(elements[i], null)
-        .getPropertyValue(property);
-  };
+      return new Dom(list);
+    };
 
-  this.setCss = function(property, value)
-  {
-    property = property.toLowerCase().split('-').map(function(value, i)
-    {
-      if(i > 0 && value.length)
-        value = value.charAt(0).toUpperCase() + value.slice(1);
-
-      return value;
-    }).join('');
-
-    for(var i in elements)
-      elements[i].style[property] = value;
-
-    return this;
-  };
-
-  this.getHeight = function()
-  {
-    for(var i in elements)
-      return elements[i].innerHeight;
-  };
-
-  this.focus = function()
-  {
-    for(var i in elements)
-      elements[i].focus();
-
-    return this;
-  };
-
-  this.select = function(selector, root)
-  {
-    var list = [];
-    for(var i in elements)
-    {
-      var nodeList = (root || elements[i]).querySelectorAll(selector);
-      list = list.concat(Array.prototype.slice.call(nodeList));
-    }
-
-    return this.from(list);
-  };
-
-  this.parent = function(selector, matchThis)
-  {
-    for(var i in elements)
-    {
-      if(!selector)
-        return this.from(elements[i].parentNode);
-
-      if(matchThis && this.is(selector))
-        return this.from(elements[i]);
-
-      return function recur(child)
-      {
-        if(!child.parentNode)
-          return false;
-
-        var parent = this.from(child.parentNode);
-        return parent.is(selector)
-        ? parent
-        : recur.call(this, child.parentNode);
-      }.call(this, elements[i]);
-    }
-  };
-
-  this.getSiblings = function(selector)
-  {
-    var siblings = [];
-
-    for(var i in elements)
-    {
-      var sibling = elements[i].parentNode.firstChild;
-
-      do
-      {
-        if(!~elements.indexOf(sibling))
-          if(!selector || this.from(sibling).is(selector))
-            siblings.push(sibling);
+    this.select = function (selector, root) {
+      var list = [];
+      for (var i in elements) {
+        var nodeList = (root || elements[i]).querySelectorAll(selector);
+        list = list.concat(Array.prototype.slice.call(nodeList));
       }
-      while (sibling = sibling.nextSibling);
-    }
 
-    return this.from(siblings);
-  };
+      return this.from(list);
+    };
 
-  this.nextSibling = function(selector)
-  {
-    function walker(selector, element)
-    {
-      if(element.nextSibling)
-      {
-        var sibling = this.from(element.nextSibling);
-        return sibling.is(selector)
-        ? sibling
-        : walker.call(this, selector, element.nextSibling);
+    this.parent = function (selector, matchThis) {
+      for (var i in elements) {
+        if (!selector)
+          return this.from(elements[i].parentNode);
+
+        if (matchThis && this.is(selector))
+          return this.from(elements[i]);
+
+        return function recur(child) {
+          if (!child.parentNode)
+            return false;
+
+          var parent = this.from(child.parentNode);
+          return parent.is(selector)
+            ? parent
+            : recur.call(this, child.parentNode);
+        }.call(this, elements[i]);
       }
-    }
+    };
 
-    for(var i in elements)
-      return walker.call(this, selector, elements[i]);
-  };
+    this.getSiblings = function (selector) {
+      var siblings = [];
 
-  this.previousSibling = function(selector)
-  {
-    function walker(selector, element)
-    {
-      if(element.previousSibling)
-      {
-        var sibling = this.from(element.previousSibling);
-        return sibling.is(selector)
-        ? sibling
-        : walker.call(this, selector, element.previousSibling);
+      for (var i in elements) {
+        var sibling = elements[i].parentNode.firstChild;
+
+        do {
+          if (!~elements.indexOf(sibling))
+            if (!selector || this.from(sibling).is(selector))
+              siblings.push(sibling);
+        }
+        while (sibling = sibling.nextSibling);
       }
-    }
 
-    for(var i in elements)
-      return walker.call(this, selector, elements[i]);
-  };
+      return this.from(siblings);
+    };
 
-  this.before = function(html)
-  {
-    for(var i in elements)
-      elements[i].insertAdjacentHTML('beforebegin', html);
+    this.nextSibling = function (selector) {
+      function walker(selector, element) {
+        if (element.nextSibling) {
+          var sibling = this.from(element.nextSibling);
+          return sibling.is(selector)
+            ? sibling
+            : walker.call(this, selector, element.nextSibling);
+        }
+      }
 
-    return this;
-  };
+      for (var i in elements)
+        return walker.call(this, selector, elements[i]);
+    };
 
-  this.prepend = function(item)
-  {
-    for(var i in elements)
-      item instanceof HTMLElement
-      ? elements[i].insertBefore(item, elements[i].childNodes[0])
-      : item instanceof Dom
-        ? item.get().forEach(function(item)
-          {
-            elements[i].insertBefore(item, elements[i].childNodes[0]);
-          })
-        : elements[i].insertAdjacentHTML('afterbegin', item);
+    this.previousSibling = function (selector) {
+      function walker(selector, element) {
+        if (element.previousSibling) {
+          var sibling = this.from(element.previousSibling);
+          return sibling.is(selector)
+            ? sibling
+            : walker.call(this, selector, element.previousSibling);
+        }
+      }
 
-    return this;
-  };
+      for (var i in elements)
+        return walker.call(this, selector, elements[i]);
+    };
 
-  this.append = function(item)
-  {
-    for(var i in elements)
-      item instanceof HTMLElement
-      ? elements[i].appendChild(item)
-      : item instanceof Dom
-        ? item.get().forEach(function(item)
-          {
-            elements[i].appendChild(item);
-          })
-        : elements[i].insertAdjacentHTML('beforeend', item);
+    this.children = function () {
+      var list = [];
+      for (var i in elements) {
+        var arrayList = Array.prototype.slice.call(elements[i].children);
+        list = list.concat(arrayList);
+      }
 
-    return this;
-  };
+      return this.from(list);
+    };
 
-  this.after = function(html)
-  {
-    for(var i in elements)
-      elements[i].insertAdjacentHTML('afterend', html);
-
-    return this;
-  };
-
-  this.new = function(s)
-  {
-    return this.from(document.createElement(s))
-  };
-
-  this.remove = function()
-  {
-    for(var i in elements)
-      elements[i].parentNode.removeChild(elements[i]);
-
-    elements = [];
-
-    return this;
-  };
-
-  this.removeAttribute = function(name)
-  {
-    for(var i in elements)
-      elements[i].removeAttribute(name);
-
-    return this;
-  };
-
-  this.setAttribute = function(name, value)
-  {
-    for(var i in elements)
-      elements[i].setAttribute(name, value);
-
-    return this;
-  };
-
-  this.getAttribute = function(attr)
-  {
-    for(var i in elements)
-      return elements[i].getAttribute(attr);
-  };
-
-  this.clear = function()
-  {
-    for(var i in elements)
-      while(elements[i].childNodes.length)
-        elements[i].removeChild(elements[i].childNodes[0]);
-
-    return this;
-  };
-
-  this.on = function(eventName, observer)
-  {
-    for(var i in elements)
-      elements[i].addEventListener(eventName, observer.bind(elements[i]));
-
-    return this;
-  };
-
-  this.trigger = function(eventName)
-  {
-    var e; // The custom event that will be created
-
-    if(document.createEvent)
-    {
-      e = document.createEvent("HTMLEvents");
-      e.initEvent(eventName, true, true);
-    }
-    else
-    {
-      e = document.createEventObject();
-      e.eventType = eventName;
-    }
-
-    e.eventName = eventName;
-
-    if(document.createEvent)
-    {
-      for(var i in elements)
-        elements[i].dispatchEvent(e);
-    }
-    else
-    {
-      for(var i in elements)
-        elements[i].fireEvent('on' + e.eventName, e);
-    }
-  };
-
-  this.click = function()
-  {
-    for(var i in elements)
-      elements[i].click();
-
-    return this;
-  };
-
-  this.addClass = function(className)
-  {
-    for(var i in elements)
-    {
-      var
-      list = (elements[i].className || '').split(' ');
-      list = list.filter(function(value){return value != ''});
-
-      if(~list.indexOf(className))
-        continue
-
-      list.push(className);
-      elements[i].className = list.join(' ');
-    }
-
-    return this;
-  };
-
-  this.removeClass = function(className)
-  {
-    for(var i in elements)
-    {
-      var
-      list  = elements[i].className.split(' '),
-      index = list.indexOf(className);
-
-      ~index && list.splice(index, 1);
-      elements[i].className = list.join(' ');
-    }
-
-    return this;
-  };
-
-  this.toggleClass = function(className)
-  {
-    for(var i in elements)
-    {
-      var element = this.from(elements[i]);
-
-      element.hasClass(className)
-      ? element.removeClass(className)
-      : element.addClass(className);
-    }
-
-    return this;
-  };
-
-  this.hasClass = function(className)
-  {
-    for(var i in elements)
-      return !!~elements[i].className.split(' ').indexOf(className);
-  };
-
-  this.getContent = function()
-  {
-    for(var i in elements)
-      return elements[i].innerHTML;
-  };
-
-  this.setContent = function(content)
-  {
-    for(var i in elements)
-      elements[i].innerHTML = content;
-
-     return this;
-  };
-
-  this.children = function()
-  {
-    var list = [];
-    for(var i in elements)
-    {
-      var arrayList = Array.prototype.slice.call(elements[i].children);
-      list = list.concat(arrayList);
-    }
-
-    return this.from(list);
-  };
-
-  this.childOf = function(selector)
-  {
-    for(var i in elements)
-      if(!function recur(child)
-          {
-            return child.parentNode
-            ? ( this.from(child.parentNode).is(selector)
+    this.childOf = function (selector) {
+      for (var i in elements)
+        if (!function recur(child) {
+          return child.parentNode
+            ? (this.from(child.parentNode).is(selector)
               ? true
               : recur.call(this, child.parentNode))
             : false;
-          }.call(this, elements[i]))
+        }.call(this, elements[i]))
+          return false;
+
+      return !!elements.length;
+    };
+
+    this.is = function (selector) {
+      if (!elements.length)
         return false;
 
-    return !!elements.length;
-  };
+      if (selector instanceof Dom)
+        return selector.get().length == this.get().length
+          && selector.get().every(function (item) {
+            return !!(~this.get().indexOf(item));
+          }.bind(this));
 
-  this.get = function(i)
-  {
-    return i == undefined ? elements : elements[i];
-  };
+      if (selector instanceof HTMLElement)
+        return !!(~this.get().indexOf(selector));
 
-  this.valueMap = function()
-  {
-    var map = {};
+      var matches =
+        (elements[0].matches
+          || elements[0].matchesSelector
+          || elements[0].msMatchesSelector
+          || elements[0].mozMatchesSelector
+          || elements[0].webkitMatchesSelector
+          || elements[0].oMatchesSelector);
 
-    for(var i in elements)
-    {
-      var
-      element = this.from(elements[i]),
-      name    = element.getAttribute('name') || element.getData('name');
+      for (var i in elements)
+        if (!(matches && matches.call(elements[i], selector)))
+          return false;
 
-      if((element.is('[type="radio"]') || element.is('[type="checkbox"]'))
-      && !element.get(0).checked)
-        continue;
+      return true;
+    };
 
-      if(name != undefined)
-      {
-        var value = 'value' in elements[i]
-          ? elements[i].value
-          : elements[i].innerHTML;
+    this.filter = function (selector) {
+      var filteredElements = [];
 
-        map[name] = map[name] === undefined
-         ? value
-         : [].concat(map[name], value);
+      for (var i in elements)
+        if (this.from(elements[i]).is(selector))
+          filteredElements.push(elements[i]);
+
+      return this.from(filteredElements);
+    };
+
+    this.exclude = function (selector) {
+      var filteredElements = [];
+
+      for (var i in elements)
+        if (!this.from(elements[i]).is(selector))
+          filteredElements.push(elements[i]);
+
+      return this.from(filteredElements);
+    };
+
+    //Is this empty?
+    this.isEmpty = function () {
+      return elements == undefined || elements.length == 0;
+    };
+
+    //Returns the html node element
+    this.get = function (i) {
+      return i == undefined ? elements : elements[i];
+    };
+    //#endregion Selection
+
+    //#region insertion/removal
+    this.before = function (html) {
+      for (var i in elements)
+        elements[i].insertAdjacentHTML('beforebegin', html);
+
+      return this;
+    };
+
+    this.prepend = function (item) {
+      for (var i in elements)
+        item instanceof HTMLElement
+          ? elements[i].insertBefore(item, elements[i].childNodes[0])
+          : item instanceof Dom
+            ? item.get().forEach(function (item) {
+              elements[i].insertBefore(item, elements[i].childNodes[0]);
+            })
+            : elements[i].insertAdjacentHTML('afterbegin', item);
+
+      return this;
+    };
+
+    this.append = function (item) {
+      for (var i in elements)
+        item instanceof HTMLElement
+          ? elements[i].appendChild(item)
+          : item instanceof Dom
+            ? item.get().forEach(function (item) {
+              elements[i].appendChild(item);
+            })
+            : elements[i].insertAdjacentHTML('beforeend', item);
+
+      return this;
+    };
+
+    this.after = function (html) {
+      for (var i in elements)
+        elements[i].insertAdjacentHTML('afterend', html);
+
+      return this;
+    };
+
+    this.remove = function () {
+      for (var i in elements)
+        elements[i].parentNode.removeChild(elements[i]);
+
+      elements = [];
+
+      return this;
+    };
+
+    this.new = function (s) {
+      return this.from(document.createElement(s))
+    };
+
+    this.clear = function () {
+      for (var i in elements)
+        while (elements[i].childNodes.length)
+          elements[i].removeChild(elements[i].childNodes[0]);
+
+      return this;
+    };
+    //#endregion insertion/removal
+
+    //#region Content
+    this.getContent = function () {
+      for (var i in elements)
+        return elements[i].innerHTML;
+    };
+
+    this.setContent = function (content) {
+      for (var i in elements)
+        elements[i].innerHTML = content;
+
+      return this;
+    };
+
+
+    //#endregion Content
+
+    //#region css
+    this.getCss = function (property) {
+      for (var i in elements)
+        return window
+          .getComputedStyle(elements[i], null)
+          .getPropertyValue(property);
+    };
+
+    this.setCss = function (property, value) {
+      property = property.toLowerCase().split('-').map(function (value, i) {
+        if (i > 0 && value.length)
+          value = value.charAt(0).toUpperCase() + value.slice(1);
+
+        return value;
+      }).join('');
+
+      for (var i in elements)
+        elements[i].style[property] = value;
+
+      return this;
+    };
+
+    //Set multiple css through an object
+    this.setCsss = function (obj) {
+      if (!obj || typeof obj != 'object' || Array.isArray(obj))
+        return this;
+
+      for (var k in obj)
+        this.setCss(k, obj[k]);
+
+      return this;
+    };
+    //#endregion css
+
+    //#region attributes
+    this.getAttribute = function (attr) {
+      for (var i in elements)
+        return elements[i].getAttribute(attr);
+    };
+
+    this.setAttribute = function (name, value) {
+      for (var i in elements)
+        elements[i].setAttribute(name, value);
+
+      return this;
+    };
+
+    this.removeAttribute = function (name) {
+      for (var i in elements)
+        elements[i].removeAttribute(name);
+
+      return this;
+    };
+
+    //Remove multiple attributes through an array
+    this.removeAttributes = function (names) {
+      if (!Array.isArray(names))
+        return this;
+
+      for (var i in names)
+        this.removeAttribute(names[i]);
+
+      return this;
+    };
+
+    //Set multiple attributes through an object
+    this.setAttributes = function (obj) {
+      if (!obj || typeof obj != 'object')
+        return this;
+
+      for (var k in obj)
+        this.setAttribute(k, obj[k]);
+
+      return this;
+    };
+    //#endregion attributes
+
+    //#region classes
+    this.hasClass = function (className) {
+      for (var i in elements)
+        return !!(~elements[i].className.split(' ').indexOf(className));
+    };
+
+    this.addClass = function (className) {
+      for (var i in elements) {
+        var list = (elements[i].className || '').split(' ');
+        list = list.filter(function (value) { return value != '' });
+
+        if (~list.indexOf(className))
+          continue
+
+        list.push(className);
+        elements[i].className = list.join(' ');
       }
-    }
 
-    return map;
-  };
+      return this;
+    };
 
-  this.getValue = function()
-  {
-    for(var i in elements)
-      return elements[i].value;
-  };
+    this.removeClass = function (className) {
+      for (var i in elements) {
+        var
+          list = elements[i].className.split(' '),
+          index = list.indexOf(className);
 
-  this.setValue = function(value)
-  {
-    for(var i in elements)
-      elements[i].value = value;
+        ~index && list.splice(index, 1);
+        elements[i].className = list.join(' ');
+      }
 
-    return this;
-  };
+      return this;
+    };
 
-  this.hasData = function(name)
-  {
-    for(var i in elements)
-      return elements[i].dataset
-        ? name in elements[i].dataset
-        : elements[i].hasAttribute &&
-          elements[i].hasAttribute('data-' + name.replace(
-            /([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase());
-  };
+    this.toggleClass = function (className) {
+      for (var i in elements) {
+        var element = this.from(elements[i]);
 
-  this.getData = function(name)
-  {
-    for(var i in elements)
-      return elements[i].dataset
-        ? elements[i].dataset[name]
-        : elements[i].getAttribute &&
+        element.hasClass(className)
+          ? element.removeClass(className)
+          : element.addClass(className);
+      }
+
+      return this;
+    };
+
+    //Set multiple classes through an array
+    this.addClasses = function (classes) {
+      if (!Array.isArray(classes)) {
+        return this;
+      }
+      for (var i in classes)
+        this.addClass(classes[i]);
+
+      return this;
+    };
+
+    //Remove multiple classes through an array
+    this.removeClasses = function (classes) {
+      if (!Array.isArray(classes)) {
+        return this;
+      }
+      for (var i in classes)
+        this.removeClass(classes[i]);
+
+      return this;
+    };
+    //#endregion classes
+
+    //#region Dimmensions
+    this.getWidth = function () {
+      for (var i in elements)
+        return {
+          client: elements[i].clientWidth,
+          offset: elements[i].offsetWidth,
+          scroll: elements[i].scrollWidth
+        }
+
+      return {}
+    };
+
+    this.getHeight = function () {
+      for (var i in elements)
+        return {
+          client: elements[i].clientHeight,
+          offset: elements[i].offsetHeight,
+          scroll: elements[i].scrollHeight
+        }
+
+      return {}
+    };
+
+    this.getOffset = function () {
+      for (var i in elements) {
+        var offset =
+        {
+          top: elements[i].offsetTop,
+          left: elements[i].offsetLeft
+        };
+
+        return offset;
+      }
+    };
+    //#endregion Dimmensions
+
+    //#region Scroll
+    this.setScroll = function (point) {
+      for (var i in elements) {
+        if ('y' in point)
+          elements[i].scrollTop = point.y;
+
+        if ('x' in point)
+          elements[i].scrollLeft = point.x;
+      }
+
+      return this;
+    };
+    //#endregion
+
+    //#region Data attributes
+    this.getData = function (name) {
+      for (var i in elements)
+        return elements[i].dataset
+          ? elements[i].dataset[name]
+          : elements[i].getAttribute &&
           elements[i].getAttribute('data-' + name.replace(
             /([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase());
-  };
+    };
 
-  this.getOffset = function()
-  {
-    for(var i in elements)
-    {
-      var offset =
-      {
-        top  : elements[i].offsetTop,
-        left : elements[i].offsetLeft
-      };
+    this.hasData = function (name) {
+      for (var i in elements)
+        return elements[i].dataset
+          ? name in elements[i].dataset
+          : elements[i].hasAttribute &&
+          elements[i].hasAttribute('data-' + name.replace(
+            /([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase());
+    };
 
-      return offset;
-    }
-  };
-
-  this.getWidth = function()
-  {
-    for(var i in elements)
-      return {
-        client : elements[i].clientWidth,
-        offset : elements[i].offsetWidth,
-        scroll : elements[i].scrollWidth
-      }
-
-    return {}
-  };
-
-  this.getHeight = function()
-  {
-    for(var i in elements)
-      return {
-        client : elements[i].clientHeight,
-        offset : elements[i].offsetHeight,
-        scroll : elements[i].scrollHeight
-      }
-
-    return {}
-  };
-
-  this.setScroll = function(point)
-  {
-    for(var i in elements)
-    {
-      if('y' in point)
-        elements[i].scrollTop = point.y;
-
-      if('x' in point)
-        elements[i].scrollLeft = point.x;
-    }
-
-    return this;
-  };
-
-  this.setData = function(name, value)
-  {
-    for(var i in elements)
-      elements[i].dataset
-        ? elements[i].dataset[name] = value
-        : elements[i].setAttribute('data-' + name.replace(
+    this.setData = function (name, value) {
+      for (var i in elements)
+        elements[i].dataset
+          ? elements[i].dataset[name] = value
+          : elements[i].setAttribute('data-' + name.replace(
             /([a-zA-Z])(?=[A-Z])/g, '$1-').toLowerCase(), value);
 
-    return this;
-  };
+      return this;
+    };
+    //#endregion Data attributes
 
-  this.is = function(selector)
-  {
-    if(!elements.length)
-      return false;
+    //#region Forms
+    this.getValue = function () {
+      for (var i in elements)
+        return elements[i].value;
+    };
 
-    if(selector instanceof Dom)
-      return selector.get().length == this.get().length
-          && selector.get().every(function(item)
-             {
-               return ~this.get().indexOf(item);
-             }.bind(this));
+    this.setValue = function (value) {
+      for (var i in elements)
+        elements[i].value = value;
 
-    if(selector instanceof HTMLElement)
-      return ~this.get().indexOf(selector);
+      return this;
+    };
 
-    var matches =
-      ( elements[0].matches
-     || elements[0].matchesSelector
-     || elements[0].msMatchesSelector
-     || elements[0].mozMatchesSelector
-     || elements[0].webkitMatchesSelector
-     || elements[0].oMatchesSelector);
+    //Returns the first
+    this.isChecked = function () {
+      for (var i in elements)
+        return elements[i].checked;
+    };
 
-   for(var i in elements)
-     if(!(matches && matches.call(elements[i], selector)))
-      return false;
+    this.setChecked = function (value) {
+      for (var i in elements)
+        elements[i].checked = !!value;
 
-    return true;
-  };
+      return this;
+    };
 
-  this.filter = function(selector)
-  {
-    var filteredElements = [];
+    this.valueMap = function () {
+      var map = {};
 
-    for(var i in elements)
-      if(this.from(elements[i]).is(selector))
-        filteredElements.push(elements[i]);
+      for (var i in elements) {
+        var
+          element = this.from(elements[i]),
+          name = element.getAttribute('name') || element.getData('name');
 
-    return this.from(filteredElements);
-  };
+        if ((element.is('[type="radio"]') || element.is('[type="checkbox"]'))
+          && !element.isChecked())
+          continue;
 
-  this.exclude = function(selector)
-  {
-    var filteredElements = [];
+        if (name != undefined) {
+          var value = 'value' in elements[i]
+            ? elements[i].value
+            : elements[i].innerHTML;
 
-    for(var i in elements)
-      if(!this.from(elements[i]).is(selector))
-        filteredElements.push(elements[i]);
+          map[name] = map[name] === undefined
+            ? value
+            : [].concat(map[name], value);
+        }
+      }
 
-    return this.from(filteredElements);
-  };
+      return map;
+    };
+    //#endregion Forms
 
-  this.toString = function()
-  {
-    var out = '';
+    //#region Events
+    this.on = function (eventName, observer) {
+      for (var i in elements)
+        elements[i].addEventListener(eventName, observer.bind(elements[i]));
 
-    for(var i in elements)
-      out += elements[i].outerHTML;
+      return this;
+    };
 
-    return out;
-  };
-})([window.document]);
+    this.trigger = function (eventName) {
+      var e; // The custom event that will be created
+
+      if (document.createEvent) {
+        e = document.createEvent("HTMLEvents");
+        e.initEvent(eventName, true, true);
+      }
+      else {
+        e = document.createEventObject();
+        e.eventType = eventName;
+      }
+
+      e.eventName = eventName;
+
+      if (document.createEvent) {
+        for (var i in elements)
+          elements[i].dispatchEvent(e);
+      }
+      else {
+        for (var i in elements)
+          elements[i].fireEvent('on' + e.eventName, e);
+      }
+    };
+    //#endregion Events
+
+    //#region Element calls / Event triggering
+    this.focus = function () {
+      for (var i in elements)
+        elements[i].focus();
+
+      return this;
+    };
+
+    this.click = function () {
+      for (var i in elements)
+        elements[i].click();
+
+      return this;
+    };
+    //#endregion Element calls / Event triggering
+
+    //#region Util
+    //This function provides a for each with a context to the element
+    //Something that was missing if you want to apply changes based on each element context
+    //fn(htmlElement, index, this)
+    this.each = function (fn) {
+      for (var i in elements) {
+        var singleDomElement = this.from(elements[i]);
+        var index = parseInt(i);
+        fn(singleDomElement, index, this);
+      }
+
+      return this;
+    };
+
+    this.toString = function () {
+      var out = '';
+
+      for (var i in elements)
+        out += elements[i].outerHTML;
+
+      return out;
+    };
+    //#endregion Util
+  })(window.document); // /documentDom
+  //amd = Asynchronous Module Definition
+  if (typeof define === 'function' && typeof define.amd === 'object' && define.amd) {
+    // AMD. Register as an anonymous module.
+    define(function () {
+      return documentDom;
+    });
+  }
+  window.dom = documentDom;
+})(window);
+//})([window.document]);
