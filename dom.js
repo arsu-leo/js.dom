@@ -9,6 +9,7 @@
   // Methods used to set data, usually sets it on all the elements
   var documentDom = new (function Dom(elements) {
     //#region Selection
+    this.length = elements && elements.length || 0;
     this.from = function (e) {
       var list = e instanceof window.NodeList
         ? Array.prototype.slice.call(e)
@@ -232,7 +233,7 @@
     };
 
     this.new = function (s) {
-      return this.from(document.createElement(s))
+      return this.from(document.createElement(s));
     };
 
     this.clear = function () {
@@ -256,8 +257,6 @@
 
       return this;
     };
-
-
     //#endregion Content
 
     //#region css
@@ -346,10 +345,10 @@
     this.addClass = function (className) {
       for (var i in elements) {
         var list = (elements[i].className || '').split(' ');
-        list = list.filter(function (value) { return value != '' });
+        list = list.filter(function (value) { return value != ''; });
 
         if (~list.indexOf(className))
-          continue
+          continue;
 
         list.push(className);
         elements[i].className = list.join(' ');
@@ -413,9 +412,9 @@
           client: elements[i].clientWidth,
           offset: elements[i].offsetWidth,
           scroll: elements[i].scrollWidth
-        }
+        };
 
-      return {}
+      return {};
     };
 
     this.getHeight = function () {
@@ -424,9 +423,9 @@
           client: elements[i].clientHeight,
           offset: elements[i].offsetHeight,
           scroll: elements[i].scrollHeight
-        }
+        };
 
-      return {}
+      return {};
     };
 
     this.getOffset = function () {
@@ -551,7 +550,7 @@
       var e; // The custom event that will be created
 
       if (document.createEvent) {
-        e = document.createEvent("HTMLEvents");
+        e = document.createEvent('HTMLEvents');
         e.initEvent(eventName, true, true);
       }
       else {
@@ -621,4 +620,3 @@
   }
   window.dom = documentDom;
 })(window);
-//})([window.document]);
