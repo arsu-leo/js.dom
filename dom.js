@@ -611,7 +611,7 @@
       return out;
     };
     //#endregion Util
-  })(window.document); // /documentDom
+  })([window.document]); // /documentDom
   //amd = Asynchronous Module Definition
   if (typeof define === 'function' && typeof define.amd === 'object' && define.amd) {
     // AMD. Register as an anonymous module.
