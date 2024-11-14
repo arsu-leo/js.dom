@@ -11,6 +11,11 @@
     //#region Selection
     this.length = elements && elements.length || 0;
     this.from = function(e) {
+      //If we making a Dom from a Dom, just create a copy
+      if(e instanceof Dom){
+        // Returns a new dom instance
+        return e.exclude();
+      }
       var list = e instanceof window.NodeList
         ? Array.prototype.slice.call(e)
         : e instanceof Array
